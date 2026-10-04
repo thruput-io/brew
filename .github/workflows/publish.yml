@@ -1,0 +1,67 @@
+name: publish
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 * * * *'
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  publish:
+    name: take the latest formulae, install every one, then publish
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAP: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: take the formulae from the latest release of every source
+        run: |
+          set -euo pipefail
+          mkdir -p Formula
+          while read -r repo; do
+            [ -n "$repo" ] || continue
+            gh release download --repo "$repo" --pattern '*.rb' --dir Formula --clobber
+            echo "$repo $(gh release view --repo "$repo" --json tagName --jq .tagName)"
+          done < sources.txt > releases.txt
+          cat releases.txt
+
+      - id: changed
+        run: |
+          set -euo pipefail
+          git add --all Formula releases.txt
+          if git diff --cached --quiet; then
+            echo "commit=false" >> "$GITHUB_OUTPUT"
+          else
+            git -c user.name='github-actions[bot]' \
+                -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+                commit --quiet --message "Publish $(paste -sd' ' releases.txt)"
+            echo "commit=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: install and test every formula from this tap
+        if: steps.changed.outputs.commit == 'true' || github.event_name != 'schedule'
+        run: |
+          set -euo pipefail
+          brew tap "$TAP" "$GITHUB_WORKSPACE"
+          formulae=$(find Formula -name '*.rb' -exec basename {} .rb \; | sort | sed "s|^|$TAP/|")
+          test -n "$formulae"
+          brew install --build-from-source $formulae
+          brew test $formulae
+          echo "installed and tested $(echo $formulae | wc -w) formulae"
+
+      - name: publish
+        if: steps.changed.outputs.commit == 'true' && github.ref == 'refs/heads/main'
+        run: git push origin HEAD:main
