@@ -1,10 +1,10 @@
-# brew
+# homebrew-tap
 
 The Homebrew tap for thruput-io packages.
 
 ```sh
-brew tap thruput-io/brew https://github.com/thruput-io/brew
-brew trust thruput-io/brew
+brew tap thruput-io/tap
+brew trust thruput-io/tap
 brew install integration-test-tool
 ```
 
@@ -22,4 +22,4 @@ publishing), and by hand from the Actions tab.
 
 Add `owner/repo` to `sources.txt`. Its releases must carry `.rb` assets whose
 `url` is a release asset and whose `depends_on` names other formulae as
-`thruput-io/brew/<name>`.
+`thruput-io/tap/<name>`.

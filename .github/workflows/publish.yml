@@ -24,7 +24,6 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      TAP: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
 
@@ -55,6 +54,7 @@ jobs:
         if: steps.changed.outputs.commit == 'true' || github.event_name != 'schedule'
         run: |
           set -euo pipefail
+          TAP=${GITHUB_REPOSITORY/\/homebrew-//}
           brew tap "$TAP" "$GITHUB_WORKSPACE"
           brew trust "$TAP"
           formulae=$(find Formula -name '*.rb' -exec basename {} .rb \; | sort | sed "s|^|$TAP/|")
