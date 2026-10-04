@@ -1,12 +1,9 @@
 name: publish
 
 on:
-  workflow_dispatch:
+  repository_dispatch:
+    types: [release]
   pull_request:
-  push:
-    branches: [main]
-  schedule:
-    - cron: '23 * * * *'
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -51,7 +48,6 @@ jobs:
             echo "commit=true" >> "$GITHUB_OUTPUT"
           fi
       - name: install and test every formula from this tap
-        if: steps.changed.outputs.commit == 'true' || github.event_name != 'schedule'
         run: |
           set -euo pipefail
           TAP=${GITHUB_REPOSITORY/\/homebrew-//}
