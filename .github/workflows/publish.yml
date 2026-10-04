@@ -31,6 +31,8 @@ jobs:
           while read -r repo; do
             [ -n "$repo" ] || continue
             gh release download --repo "$repo" --pattern '*.rb' --dir Formula --clobber
+            tarball=$(gh release view --repo "$repo" --json assets --jq '.assets[] | select(.name | endswith(".tar.gz")) | .url')
+            sed -i '' "s|^  url .*|  url \"$tarball\"|" Formula/*.rb
             echo "$repo $(gh release view --repo "$repo" --json tagName --jq .tagName)"
           done < sources.txt > releases.txt
           cat releases.txt

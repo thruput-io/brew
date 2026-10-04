@@ -23,6 +23,6 @@ It does not run on a schedule or by hand.
 ## Adding a repository
 
 Add `owner/repo` to `sources.txt`; its pipeline sends the `release` dispatch
-after releasing. Its releases must carry `.rb` assets whose
-`url` is a release asset and whose `depends_on` names other formulae as
-`thruput-io/tap/<name>`.
+after releasing. Its releases must carry `.rb` assets and one
+`.tar.gz` asset they build from; `publish` points each formula's `url` at that
+asset. `depends_on` names other formulae as `thruput-io/tap/<name>`.
