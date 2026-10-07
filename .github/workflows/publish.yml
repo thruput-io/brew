@@ -1,0 +1,66 @@
+name: publish
+
+on:
+  repository_dispatch:
+    types: [release]
+  pull_request:
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  publish:
+    name: take the latest formulae, install every one, then publish
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: take the formulae from the latest release of every source
+        run: |
+          set -euo pipefail
+          mkdir -p Formula
+          while read -r repo; do
+            [ -n "$repo" ] || continue
+            gh release download --repo "$repo" --pattern '*.rb' --dir Formula --clobber
+            tarball=$(gh release view --repo "$repo" --json assets --jq '.assets[] | select(.name | endswith(".tar.gz")) | .url')
+            sed -i '' "s|^  url .*|  url \"$tarball\"|" Formula/*.rb
+            echo "$repo $(gh release view --repo "$repo" --json tagName --jq .tagName)"
+          done < sources.txt > releases.txt
+          cat releases.txt
+
+      - id: changed
+        run: |
+          set -euo pipefail
+          git add --all Formula releases.txt
+          if git diff --cached --quiet; then
+            echo "commit=false" >> "$GITHUB_OUTPUT"
+          else
+            git -c user.name='github-actions[bot]' \
+                -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+                commit --quiet --message "Publish $(paste -sd' ' releases.txt)"
+            echo "commit=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: install every formula from this tap
+        run: |
+          set -euo pipefail
+          TAP=${GITHUB_REPOSITORY/\/homebrew-//}
+          brew tap "$TAP" "$GITHUB_WORKSPACE"
+          brew trust "$TAP"
+          formulae=()
+          while IFS= read -r f; do formulae+=("$f"); done < <(find Formula -name '*.rb' -exec basename {} .rb \; | sort | sed "s|^|$TAP/|")
+          test "${#formulae[@]}" -gt 0
+          brew install --build-from-source "${formulae[@]}"
+          echo "installed ${#formulae[@]} formulae"
+
+      - name: publish
+        if: steps.changed.outputs.commit == 'true' && github.ref == 'refs/heads/main'
+        run: git push origin HEAD:main
