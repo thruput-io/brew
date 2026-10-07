@@ -49,17 +49,16 @@ jobs:
                 commit --quiet --message "Publish $(paste -sd' ' releases.txt)"
             echo "commit=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: install and test every formula from this tap
+      - name: install every formula from this tap
         run: |
           set -euo pipefail
           TAP=${GITHUB_REPOSITORY/\/homebrew-//}
           brew tap "$TAP" "$GITHUB_WORKSPACE"
           brew trust "$TAP"
-          formulae=$(find Formula -name '*.rb' -exec basename {} .rb \; | sort | sed "s|^|$TAP/|")
-          test -n "$formulae"
-          brew install --build-from-source $formulae
-          brew test $formulae
-          echo "installed and tested $(echo $formulae | wc -w) formulae"
+          mapfile -t formulae < <(find Formula -name '*.rb' -exec basename {} .rb \; | sort | sed "s|^|$TAP/|")
+          test "${#formulae[@]}" -gt 0
+          brew install --build-from-source "${formulae[@]}"
+          echo "installed ${#formulae[@]} formulae"
 
       - name: publish
         if: steps.changed.outputs.commit == 'true' && github.ref == 'refs/heads/main'

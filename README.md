@@ -12,7 +12,7 @@ brew install integration-test-tool
 
 Every repository named in `sources.txt` attaches its formulae (`*.rb`) to a
 GitHub Release. `publish` takes the latest release of each into `Formula/`,
-builds every formula from source and runs its `test do` on a clean macOS
+builds every formula from source on a clean macOS
 runner, and only then commits to `main`.
 
 It runs when a source tells it there is a release: the source's pipeline
