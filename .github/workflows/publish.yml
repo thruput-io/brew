@@ -55,7 +55,8 @@ jobs:
           TAP=${GITHUB_REPOSITORY/\/homebrew-//}
           brew tap "$TAP" "$GITHUB_WORKSPACE"
           brew trust "$TAP"
-          mapfile -t formulae < <(find Formula -name '*.rb' -exec basename {} .rb \; | sort | sed "s|^|$TAP/|")
+          formulae=()
+          while IFS= read -r f; do formulae+=("$f"); done < <(find Formula -name '*.rb' -exec basename {} .rb \; | sort | sed "s|^|$TAP/|")
           test "${#formulae[@]}" -gt 0
           brew install --build-from-source "${formulae[@]}"
           echo "installed ${#formulae[@]} formulae"
